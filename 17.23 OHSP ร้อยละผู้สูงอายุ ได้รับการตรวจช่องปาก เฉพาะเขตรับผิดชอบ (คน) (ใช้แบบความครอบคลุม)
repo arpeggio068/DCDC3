@@ -1,0 +1,74 @@
+SELECT
+    P1.HOSPCODE,
+    CASE 
+      WHEN P1.HOSPCODE = '06676' THEN 'รพสต.สถาน'
+      WHEN P1.HOSPCODE = '06677' THEN 'รพสต.บ้านน้ำม้า'
+      WHEN P1.HOSPCODE = '06678' THEN 'รพสต.บ้านทุ่งอ่าง'
+      WHEN P1.HOSPCODE = '06679' THEN 'รพสต.ครึ่ง'
+      WHEN P1.HOSPCODE = '06680' THEN 'รพสต.ม่วงชุม'
+      WHEN P1.HOSPCODE = '06681' THEN 'รพสต.บุญเรือง'
+      WHEN P1.HOSPCODE = '06682' THEN 'รพสต.บ้านซ้อเหนือ'
+      WHEN P1.HOSPCODE = '06683' THEN 'รพสต.ห้วยซ้อ'
+      WHEN P1.HOSPCODE = '06684' THEN 'รพสต.บ้านใหม่ดอนแก้ว'
+      WHEN P1.HOSPCODE = '06685' THEN 'รพสต.บ้านเขียะ'
+      WHEN P1.HOSPCODE = '06686' THEN 'รพสต.บ้านดงหลวง'
+      WHEN P1.HOSPCODE = '06687' THEN 'รพสต.ศรีดอนชัย'
+      WHEN P1.HOSPCODE = '06688' THEN 'รพสต.บ้านหาดบ้าย'
+      WHEN P1.HOSPCODE = '06689' THEN 'รพสต.บ้านเมืองกาญจน์'
+      WHEN P1.HOSPCODE = '10436' THEN 'รพสต.บ้านสองพี่น้อง'
+      WHEN P1.HOSPCODE = '11454' THEN 'รพร.เชียงของ'
+      WHEN P1.HOSPCODE = '15004' THEN 'รพสต.บ้านศรีวิไล'
+      WHEN P1.HOSPCODE = '23983' THEN 'รพสต.บ้านทุ่งงิ้ว'
+    ELSE 'none' END AS cup,    
+    COUNT(DISTINCT cid) AS target,
+    IFNULL(DT11.exam,0)  AS exam,
+    CAST((IFNULL(DT11.exam,0)/COUNT(DISTINCT CID))*100 AS DECIMAL(5, 2)) AS percent
+    FROM
+    (
+    SELECT DISTINCT
+    HOSPCODE,
+    cid,    
+    DATE_FORMAT(FROM_DAYS(DATEDIFF('2022-06-30',BIRTH)), '%Y')+0 AS age
+    
+    from person 
+    
+    where 
+    
+    TYPEAREA IN ('1', '3')
+    AND DISCHARGE = '9'
+    HAVING  age BETWEEN 60 AND 199
+    ) AS P1 
+    
+    LEFT JOIN(
+    SELECT 
+    DT.phoscode,
+    COUNT(DISTINCT DT.CID) AS exam
+    
+    FROM
+    (
+    SELECT DISTINCT
+    person.HOSPCODE AS phoscode, 
+    dental.*    
+    
+    from dental    
+    
+    INNER JOIN provider ON provider.provider = dental.provider AND provider.HOSPCODE = dental.HOSPCODE
+    INNER JOIN person ON person.cid = dental.cid 
+    
+    WHERE 
+    
+    provider.providertype IN ('02','06')
+    AND person.TYPEAREA IN ('1', '3')
+    AND dental.PTEETH BETWEEN 0 AND 32
+    AND DATE_FORMAT(FROM_DAYS(DATEDIFF('2022-06-30',person.BIRTH)), '%Y')+0 BETWEEN 60 AND 199
+    AND IFNULL(dental.PERMANENT_PERMANENT,0) + IFNULL(dental.PERMANENT_PROSTHESIS,0)
+    + IFNULL(dental.PROSTHESIS_PROSTHESIS,0) BETWEEN 0 AND 10
+    AND (IFNULL(dental.pteeth,0) +IFNULL(dental.PEXTRACT,0)) > 0
+    AND dental.DATE_SERV BETWEEN '2022-10-01' AND '2023-09-30'
+   
+    ) AS DT
+    GROUP BY DT.phoscode  
+    
+    ) AS DT11 ON DT11.phoscode = P1.HOSPCODE
+    
+    GROUP BY P1.HOSPCODE;

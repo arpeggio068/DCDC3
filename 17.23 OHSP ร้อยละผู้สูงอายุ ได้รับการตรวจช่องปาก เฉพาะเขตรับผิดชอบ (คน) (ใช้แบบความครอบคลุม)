@@ -28,7 +28,7 @@ SELECT
     SELECT DISTINCT
     HOSPCODE,
     cid,    
-    DATE_FORMAT(FROM_DAYS(DATEDIFF('2022-06-30',BIRTH)), '%Y')+0 AS age
+    DATE_FORMAT(FROM_DAYS(DATEDIFF('2022-10-01',BIRTH)), '%Y')+0 AS age
     
     from person 
     

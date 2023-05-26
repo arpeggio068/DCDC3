@@ -1,0 +1,57 @@
+SELECT
+Q1.HOSPCODE,
+Q1.DATE_SERV,
+Q1.PID,
+Q1.CID,
+Q1.NAME
+
+FROM
+(
+SELECT DISTINCT
+procedure_opd.HOSPCODE,
+procedure_opd.DATE_SERV,
+person.PID,
+person.CID,
+CONCAT(person.NAME,' ',person.LNAME) AS NAME,
+dx.DX,
+MAX(CASE WHEN dx.DX LIKE '%Z128%' THEN 'yes' ELSE 'no' END) OVER (PARTITION BY person.CID) 
+AS flag_dx,
+CASE WHEN procedure_opd.DATE_SERV = MAX(procedure_opd.DATE_SERV) OVER (PARTITION BY person.CID)              
+THEN 'y' ELSE 'n' END AS flag_last_visit 
+
+FROM procedure_opd
+
+INNER JOIN person ON person.CID = procedure_opd.CID AND person.HOSPCODE = procedure_opd.HOSPCODE 
+INNER JOIN provider ON provider.provider = procedure_opd.provider AND provider.HOSPCODE = procedure_opd.HOSPCODE
+INNER JOIN(
+SELECT
+diagnosis_opd.hospcode,
+diagnosis_opd.pid,
+diagnosis_opd.seq,
+GROUP_CONCAT(diagnosis_opd.diagcode SEPARATOR ', ') AS DX
+
+FROM diagnosis_opd
+INNER JOIN provider ON provider.provider = diagnosis_opd.provider AND provider.HOSPCODE = diagnosis_opd.HOSPCODE
+
+WHERE 
+provider.providertype IN ('02','06')
+AND diagnosis_opd.DATE_SERV BETWEEN '2022-10-01' AND '2023-09-30'
+GROUP BY hospcode, pid, seq
+)  AS dx ON dx.hospcode  = procedure_opd.hospcode AND dx.pid = procedure_opd.pid AND dx.seq  = procedure_opd.seq 
+
+WHERE 
+
+provider.providertype IN ('02','06')
+AND person.discharge IN ('9')
+AND DATE_FORMAT(FROM_DAYS(DATEDIFF('2023-01-01',person.BIRTH)), '%Y')+0 BETWEEN 40 AND 199
+AND procedure_opd.DATE_SERV BETWEEN '2022-10-01' AND '2023-09-30'
+AND LENGTH(person.CID) =13 
+AND person.NATION IN (99)
+
+)AS Q1
+
+WHERE 
+Q1.flag_dx = 'no'
+AND Q1.flag_last_visit = 'y'
+
+ORDER BY Q1.HOSPCODE;
